@@ -1,0 +1,13 @@
+{
+  "site": {
+    "name": "vynryx",
+    "build": {
+      "command": "npm run build && npm run export",
+      "publish": "out",
+      "baseDir": ".",
+      "environment": {
+        "NEXT_PUBLIC_RELAY_URL": "wss://vynryx-relay.fly.dev/gun"
+      }
+    }
+  }
+}

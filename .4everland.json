@@ -1,0 +1,10 @@
+{
+  "name": "vynryx",
+  "framework": "nextjs",
+  "buildCommand": "npm run build",
+  "outputDirectory": "out",
+  "installCommand": "npm install",
+  "environmentVariables": {
+    "NEXT_PUBLIC_RELAY_URL": "https://vynryx-relay.fly.dev/gun"
+  }
+}

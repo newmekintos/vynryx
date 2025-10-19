@@ -1,0 +1,24 @@
+{
+  "name": "VYNRYX - Decentralized Freelance Platform",
+  "short_name": "VYNRYX",
+  "description": "Verify Your Network, Realize Your eXpertise - Fully P2P Web3 Freelance Platform",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#8B5CF6",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
