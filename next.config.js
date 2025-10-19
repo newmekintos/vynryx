@@ -7,11 +7,9 @@ const nextConfig = {
     unoptimized: true,
   },
   trailingSlash: true,
-  // GitHub Pages için basePath (repo adı)
-  // Kendi domain kullanırsan kaldır
-  basePath: process.env.NODE_ENV === 'production' && process.env.GITHUB_PAGES === 'true' 
-    ? '/vynryx' 
-    : '',
+  // GitHub Pages için basePath
+  basePath: '/vynryx',
+  assetPrefix: '/vynryx/',
   webpack: (config) => {
     config.externals.push('pino-pretty', 'lokijs', 'encoding');
     config.resolve.fallback = {
