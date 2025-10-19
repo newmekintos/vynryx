@@ -39,7 +39,7 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { gun } = useP2P();
+  const { data, sendUser } = useP2P(); // Trystero P2P
   const [user, setUser] = useState<User | null>(null);
   const [waiqtionBalance, setWaiqtionBalance] = useState(0);
   const [chainHeight, setChainHeight] = useState(0);
@@ -54,21 +54,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // ⭐ Global User Count (GunDB - LocalStorage'dan bağımsız)
+  // ⭐ Global User Count (Trystero P2P - TAM DECENTRALİZED!)
   useEffect(() => {
-    if (!gun) return;
-
-    // GunDB'den global unique kullanıcı sayısını oku
-    const userAddresses = new Set<string>();
-    
-    gun.get('vynryx').get('users').map().on((userData: any, address: string) => {
-      if (userData && address && userData.address) {
-        userAddresses.add(address);
-        // Her güncelleme geldiğinde sayıyı güncelle
-        setChainHeight(userAddresses.size);
-      }
-    });
-  }, [gun]);
+    // P2P network'teki unique kullanıcı sayısı
+    const userAddresses = new Set(data.users.keys());
+    setChainHeight(userAddresses.size);
+  }, [data.users]);
 
   const updateBalance = (userId: string) => {
     const balance = WaiqtionWallet.getBalance(userId);
@@ -143,15 +134,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       chainUsers[wallet.address] = walletUser;
       localStorage.setItem('vynryx_chain_users', JSON.stringify(chainUsers));
 
-      // ⭐ GunDB'ye kaydet (Global P2P network)
-      if (gun) {
-        gun.get('vynryx').get('users').get(wallet.address).put({
-          address: wallet.address,
-          chainId: walletUser.chainId,
-          name: name,
-          createdAt: walletUser.createdAt,
-        });
-      }
+      // ⭐ Trystero P2P'ye broadcast et (TAM DECENTRALİZED!)
+      sendUser({
+        address: wallet.address,
+        chainId: walletUser.chainId,
+        name: name,
+        createdAt: walletUser.createdAt,
+      });
+      console.log('✅ Kullanıcı P2P network\'e broadcast edildi!');
 
       // Save wallet
       VynryxWalletSystem.saveWallet(wallet, walletUser.id);
@@ -185,15 +175,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Wallet'ı tekrar kaydet (sadece güncelleme için)
       VynryxWalletSystem.saveWallet(wallet, walletUser.id);
       
-      // GunDB'de yoksa ekle (yeni network'te restore ediliyor olabilir)
-      if (gun) {
-        gun.get('vynryx').get('users').get(wallet.address).put({
-          address: wallet.address,
-          chainId: walletUser.chainId,
-          name: walletUser.name,
-          createdAt: walletUser.createdAt,
-        });
-      }
+      // P2P network'e broadcast et (yeni cihazda restore ediliyor)
+      sendUser({
+        address: wallet.address,
+        chainId: walletUser.chainId,
+        name: walletUser.name,
+        createdAt: walletUser.createdAt,
+      });
+      console.log('✅ Kullanıcı restore edildi ve P2P network\'e broadcast edildi!');
     }
 
     setUser(walletUser);

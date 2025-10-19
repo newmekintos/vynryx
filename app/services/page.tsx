@@ -26,7 +26,7 @@ interface Service {
 
 export default function ServicesPage() {
   const { isAuthenticated, user } = useAuth();
-  const { gun } = useP2P();
+  const { data } = useP2P();
   const { t, language } = useLanguage();
   const router = useRouter();
   
@@ -55,22 +55,15 @@ export default function ServicesPage() {
   ];
 
   useEffect(() => {
-    if (!gun) return;
-
-    gun.get('vynryx').get('services').map().on((service: Service, key: string) => {
-      if (service && service.title) {
-        setServices(prev => {
-          const exists = prev.find(s => s.id === key);
-          if (exists) return prev;
-          return [...prev, { ...service, id: key }].sort((a, b) => b.createdAt - a.createdAt);
-        });
-      }
-    });
-  }, [gun]);
+    const savedServices = localStorage.getItem('vynryx_services');
+    if (savedServices) {
+      setServices(JSON.parse(savedServices));
+    }
+  }, []);
 
   const handleCreateService = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!gun || !user) return;
+    if (!user) return;
 
     const service: Service = {
       id: Date.now().toString(),
@@ -81,7 +74,9 @@ export default function ServicesPage() {
       createdAt: Date.now(),
     };
 
-    gun.get('vynryx').get('services').get(service.id).put(service);
+    const updatedServices = [...services, service].sort((a, b) => b.createdAt - a.createdAt);
+    setServices(updatedServices);
+    localStorage.setItem('vynryx_services', JSON.stringify(updatedServices));
 
     setNewService({
       title: "",

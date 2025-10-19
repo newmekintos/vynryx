@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useWeb3 } from "./providers/Web3Provider";
+import { useAuth } from "./providers/AuthProvider";
 import { useP2P } from "./providers/P2PProvider";
 import { User, Briefcase, Tag, FileText } from "lucide-react";
 
@@ -10,8 +10,9 @@ interface ProfileSetupProps {
 }
 
 export function ProfileSetup({ onComplete }: ProfileSetupProps) {
-  const { address } = useWeb3();
-  const { gun } = useP2P();
+  const { user } = useAuth();
+  const { data, sendProfile } = useP2P();
+  const address = user?.vynryxAddress;
   
   const [userType, setUserType] = useState<"freelancer" | "client" | null>(null);
   const [formData, setFormData] = useState({
@@ -24,9 +25,9 @@ export function ProfileSetup({ onComplete }: ProfileSetupProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!userType || !gun) return;
+    if (!userType || !address) return;
 
-    // Save profile to Gun.js
+    // Create profile
     const profile = {
       ...formData,
       userType,
@@ -35,12 +36,9 @@ export function ProfileSetup({ onComplete }: ProfileSetupProps) {
       createdAt: Date.now(),
     };
 
-    // Store in Gun under user's address
-    gun.get('vynryx').get('profiles').get(address).put(profile);
+    // Broadcast to P2P network
+    sendProfile(profile);
     
-    // Also index by user type
-    gun.get('vynryx').get(userType + 's').get(address).put(profile);
-
     // Save to localStorage
     localStorage.setItem('vynryx_profile', JSON.stringify(profile));
     

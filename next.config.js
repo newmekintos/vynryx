@@ -10,14 +10,26 @@ const nextConfig = {
   // GitHub Pages için basePath
   basePath: '/vynryx',
   assetPrefix: '/vynryx/',
-  webpack: (config) => {
+  webpack: (config, { isServer }) => {
     config.externals.push('pino-pretty', 'lokijs', 'encoding');
-    config.resolve.fallback = {
-      ...config.resolve.fallback,
-      fs: false,
-      net: false,
-      tls: false,
-    };
+    
+    // OrbitDB + IPFS için Node.js polyfills
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+        crypto: false,
+        stream: false,
+        http: false,
+        https: false,
+        zlib: false,
+        path: false,
+        os: false,
+      };
+    }
+    
     return config;
   },
 }

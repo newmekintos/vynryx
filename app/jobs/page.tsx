@@ -25,7 +25,7 @@ interface Job {
 
 export default function JobsPage() {
   const { isAuthenticated, user } = useAuth();
-  const { gun } = useP2P();
+  const { data, room } = useP2P();
   const { t, language } = useLanguage();
   const router = useRouter();
   
@@ -41,23 +41,18 @@ export default function JobsPage() {
     location: "Remote",
   });
 
+  // Jobs will be loaded from P2P data when available
+  // For now, use localStorage
   useEffect(() => {
-    if (!gun) return;
-
-    gun.get('vynryx').get('jobs').map().on((job: Job, key: string) => {
-      if (job && job.title) {
-        setJobs(prev => {
-          const exists = prev.find(j => j.id === key);
-          if (exists) return prev;
-          return [...prev, { ...job, id: key }].sort((a, b) => b.postedAt - a.postedAt);
-        });
-      }
-    });
-  }, [gun]);
+    const savedJobs = localStorage.getItem('vynryx_jobs');
+    if (savedJobs) {
+      setJobs(JSON.parse(savedJobs));
+    }
+  }, []);
 
   const handleCreateJob = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!gun || !user) return;
+    if (!user) return;
 
     const job: Job = {
       id: Date.now().toString(),
@@ -67,7 +62,10 @@ export default function JobsPage() {
       postedAt: Date.now(),
     };
 
-    gun.get('vynryx').get('jobs').get(job.id).put(job);
+    // Save to localStorage
+    const updatedJobs = [...jobs, job].sort((a, b) => b.postedAt - a.postedAt);
+    setJobs(updatedJobs);
+    localStorage.setItem('vynryx_jobs', JSON.stringify(updatedJobs));
 
     setNewJob({
       title: "",

@@ -19,7 +19,7 @@ interface Profile {
 
 export function Dashboard() {
   const { user } = useAuth();
-  const { gun } = useP2P();
+  const { data } = useP2P(); // Trystero P2P
   const { t } = useLanguage();
   const address = user?.vynryxAddress;
   
@@ -39,20 +39,14 @@ export function Dashboard() {
 
   // Load other profiles from P2P network
   useEffect(() => {
-    if (!gun || !myProfile) return;
+    if (!myProfile) return;
 
-    const lookingFor = myProfile.userType === "freelancer" ? "clients" : "freelancers";
+    // P2P network'teki profilleri al
+    const profileList = Array.from(data.profiles.values())
+      .filter((profile: any) => profile.address && profile.address !== address);
     
-    gun.get('vynryx').get(lookingFor).map().on((profile: Profile, key: string) => {
-      if (profile && key !== address) {
-        setProfiles(prev => {
-          const exists = prev.find(p => p.address === key);
-          if (exists) return prev;
-          return [...prev, { ...profile, address: key }];
-        });
-      }
-    });
-  }, [gun, myProfile, address]);
+    setProfiles(profileList);
+  }, [data.profiles, myProfile, address]);
 
   const filteredProfiles = profiles.filter(profile =>
     profile.name.toLowerCase().includes(searchTerm.toLowerCase()) ||

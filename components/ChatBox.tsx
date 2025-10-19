@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useWeb3 } from "./providers/Web3Provider";
+import { useAuth } from "./providers/AuthProvider";
 import { useP2P } from "./providers/P2PProvider";
 import { X, Send } from "lucide-react";
 
@@ -25,8 +25,9 @@ interface ChatBoxProps {
 }
 
 export function ChatBox({ profile, onClose }: ChatBoxProps) {
-  const { address } = useWeb3();
-  const { gun } = useP2P();
+  const { user } = useAuth();
+  const { room } = useP2P();
+  const address = user?.vynryxAddress;
   
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
@@ -35,20 +36,13 @@ export function ChatBox({ profile, onClose }: ChatBoxProps) {
   // Create chat room ID (sorted addresses to ensure same ID for both users)
   const chatId = [address, profile.address].sort().join("_");
 
-  // Load messages
+  // Load messages from localStorage
   useEffect(() => {
-    if (!gun) return;
-
-    gun.get('vynryx').get('chats').get(chatId).map().on((msg: Message, id: string) => {
-      if (msg && msg.text) {
-        setMessages(prev => {
-          const exists = prev.find(m => m.id === id);
-          if (exists) return prev;
-          return [...prev, { ...msg, id }].sort((a, b) => a.timestamp - b.timestamp);
-        });
-      }
-    });
-  }, [gun, chatId]);
+    const savedMessages = localStorage.getItem(`vynryx_chat_${chatId}`);
+    if (savedMessages) {
+      setMessages(JSON.parse(savedMessages));
+    }
+  }, [chatId]);
 
   // Auto scroll to bottom
   useEffect(() => {
@@ -57,7 +51,7 @@ export function ChatBox({ profile, onClose }: ChatBoxProps) {
 
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !gun || !address) return;
+    if (!newMessage.trim() || !address) return;
 
     const message: Message = {
       id: Date.now().toString(),
@@ -67,8 +61,10 @@ export function ChatBox({ profile, onClose }: ChatBoxProps) {
       timestamp: Date.now(),
     };
 
-    // Send to Gun.js
-    gun.get('vynryx').get('chats').get(chatId).set(message);
+    // Save to localStorage (P2P chat will be added later)
+    const updatedMessages = [...messages, message];
+    setMessages(updatedMessages);
+    localStorage.setItem(`vynryx_chat_${chatId}`, JSON.stringify(updatedMessages));
 
     setNewMessage("");
   };

@@ -1,80 +1,131 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
+import { joinRoom, selfId } from "trystero/torrent";
+
+interface P2PData {
+  users: Map<string, any>;
+  profiles: Map<string, any>;
+}
 
 interface P2PContextType {
-  gun: any;
+  room: any;
+  data: P2PData;
   isOnline: boolean;
-  peers: number;
-  user: any;
+  peers: string[];
+  sendUser: (user: any) => void;
+  sendProfile: (profile: any) => void;
 }
 
 const P2PContext = createContext<P2PContextType>({
-  gun: null,
+  room: null,
+  data: { users: new Map(), profiles: new Map() },
   isOnline: false,
-  peers: 0,
-  user: null,
+  peers: [],
+  sendUser: () => {},
+  sendProfile: () => {},
 });
 
 export function P2PProvider({ children }: { children: ReactNode }) {
-  const [gun, setGun] = useState<any>(null);
+  const [room, setRoom] = useState<any>(null);
+  const [data, setData] = useState<P2PData>({
+    users: new Map(),
+    profiles: new Map(),
+  });
   const [isOnline, setIsOnline] = useState(false);
-  const [peers, setPeers] = useState(0);
-  const [user, setUser] = useState<any>(null);
+  const [peers, setPeers] = useState<string[]>([]);
 
   useEffect(() => {
-    // ⭐ Dynamic import - Sadece client-side'da çalışır (SSR hatası yok)
+    // ⭐ TRYSTERO - TAM P2P! Backend YOK! Relay YOK!
+    // WebRTC + BitTorrent tracker'lar (sadece peer discovery için)
     if (typeof window === 'undefined') return;
 
-    import('gun/gun').then(({ default: Gun }) => {
-      // ⭐ TAM DECENTRALİZED - Public Mesh Network!
-      // Backend YOK! Community relay'ler üzerinden P2P!
-      
-      const gunInstance = Gun({
-        // Public community relay'ler (gönüllü sunucular)
-        peers: [
-          'https://gun-matrix.herokuapp.com/gun',
-          'https://gunjs.herokuapp.com/gun',
-        ],
-        localStorage: true,  // Her cihaz kendi verisini tutar
-        radisk: true,        // IndexedDB fallback
-        axe: false,          // Hata logları kapalı
-      });
+    console.log('🚀 Trystero P2P başlatılıyor...');
+    console.log('📍 Peer ID:', selfId);
 
-      // SEA için dynamic import
-      import('gun/sea').then(() => {
-        const userInstance = gunInstance.user();
-        setUser(userInstance);
-      });
-      
-      setGun(gunInstance);
-      setIsOnline(true);
+    // VYNRYX P2P room
+    const p2pRoom = joinRoom(
+      { appId: 'vynryx-v1' },
+      'vynryx-main-room'
+    );
 
-      // Monitor peer connections
-      gunInstance.on('hi', (peer: any) => {
-        setPeers(prev => prev + 1);
-      });
+    setRoom(p2pRoom);
+    setIsOnline(true);
+    console.log('✅ P2P Room hazır!');
 
-      gunInstance.on('bye', (peer: any) => {
-        setPeers(prev => Math.max(0, prev - 1));
+    // Peer tracking
+    p2pRoom.onPeerJoin((peerId: string) => {
+      console.log('👋 Peer joined:', peerId);
+      setPeers(prev => [...prev, peerId]);
+    });
+
+    p2pRoom.onPeerLeave((peerId: string) => {
+      console.log('👋 Peer left:', peerId);
+      setPeers(prev => prev.filter(id => id !== peerId));
+    });
+
+    // User data sync
+    const [sendUserData, receiveUserData] = p2pRoom.makeAction('user');
+    receiveUserData((userData: any, peerId: string) => {
+      console.log('📥 User data received from', peerId, userData);
+      setData(prev => {
+        const newUsers = new Map(prev.users);
+        newUsers.set(userData.address, userData);
+        return { ...prev, users: newUsers };
       });
-    }).catch(err => {
-      console.warn('GunDB failed to load:', err);
-      setIsOnline(false);
+    });
+
+    // Profile data sync
+    const [sendProfileData, receiveProfileData] = p2pRoom.makeAction('profile');
+    receiveProfileData((profileData: any, peerId: string) => {
+      console.log('📥 Profile data received from', peerId, profileData);
+      setData(prev => {
+        const newProfiles = new Map(prev.profiles);
+        newProfiles.set(profileData.address, profileData);
+        return { ...prev, profiles: newProfiles };
+      });
     });
 
     return () => {
-      // Cleanup if needed
+      console.log('👋 Leaving P2P room...');
+      p2pRoom.leave();
     };
   }, []);
+
+  // Send functions
+  const sendUser = useCallback((user: any) => {
+    if (!room) return;
+    const [send] = room.makeAction('user');
+    send(user);
+    // LocalStorage'a da kaydet
+    setData(prev => {
+      const newUsers = new Map(prev.users);
+      newUsers.set(user.address, user);
+      return { ...prev, users: newUsers };
+    });
+  }, [room]);
+
+  const sendProfile = useCallback((profile: any) => {
+    if (!room) return;
+    const [send] = room.makeAction('profile');
+    send(profile);
+    // LocalStorage'a da kaydet
+    setData(prev => {
+      const newProfiles = new Map(prev.profiles);
+      newProfiles.set(profile.address, profile);
+      return { ...prev, profiles: newProfiles };
+    });
+  }, [room]);
 
   return (
     <P2PContext.Provider
       value={{
-        gun,
+        room,
+        data,
         isOnline,
         peers,
-        user,
+        sendUser,
+        sendProfile,
       }}
     >
       {children}
